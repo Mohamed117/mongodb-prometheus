@@ -2,12 +2,12 @@
 Expose MongoDB to Prometheus in Kubernetes cluster
 
 ## Setting Up Prometheus + Grifana 
-```
-$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-$ helm repo add stable https://charts.helm.sh/stable 
-$ helm repo update 
-$ helm install prometheus prometheus-community/kube-prometheus-stack
-```
+
+ `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts `<br> 
+ `helm repo add stable https://charts.helm.sh/stable ` <br>
+ `helm repo update `<br>
+ `helm install prometheus prometheus-community/kube-prometheus-stack `<br>
+
 ## Access Grafana UI
 * Exposing **prometheus-grafana** deployment by a LoadBalancer service: <br>
 `kubectl expose deployment prometheus-grafana  --type=LoadBalancer --name=exposed-grifana`
@@ -38,14 +38,26 @@ default values: <br>
 
 ## MongoDB Exporter - exposing MongoDB metrics
 
+* Export helm chart values to a yaml file and edit it <br>
+`helm show values prometheus-community/prometheus-mongodb-exporter > values.yml` <br>
+`vim values.yml`
 
+* Edit the values as the following:
+> mongodb: <br>
+  >  &nbsp; &nbsp; uri: "mongodb://mongodb-service:27017"
+<br>
 
+> serviceMonitor: <br>
+>  &nbsp; &nbsp; additionalLabels: <br>
+>   &nbsp; &nbsp; &nbsp; &nbsp; release: prometheus
 
+* Install it using the new values file: <br>
+`helm install mongodb-exporter prometheus-community/prometheus-mongodb-exporter -f values.yml`
 
-
-
-
-
+## Check the mongoDB metric exporter
+* Exposing **mongodb-exporter-prometheus-mongodb-exporter** ClusterIP service by a LoadBalancer service: <br> 
+`kubectl expose service mongodb-exporter-prometheus-mongodb-exporter  --type=LoadBalancer --name=exposed-mongodb-exporter` <br>
+* You can access it using the external IP address of the newly created **exposed-mongodb-exporter** service
 
 
 
