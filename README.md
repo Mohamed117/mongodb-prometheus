@@ -48,6 +48,7 @@ default values: <br>
 <br>
 
 > serviceMonitor: <br>
+> &nbsp; &nbsp; enabled: true <br>
 >  &nbsp; &nbsp; additionalLabels: <br>
 >   &nbsp; &nbsp; &nbsp; &nbsp; release: prometheus
 
