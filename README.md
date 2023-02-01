@@ -1,7 +1,7 @@
 # mongodb-prometheus
 Expose MongoDB to Prometheus in Kubernetes cluster
 
-## Setting Up Prometheus + Grifana 
+## Setting Up Prometheus + Grafana 
 
  `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts `<br> 
  `helm repo add stable https://charts.helm.sh/stable ` <br>
@@ -20,7 +20,7 @@ default values: <br>
   admin-user: admin <br>
   admin-password: prom-operator
   
-* You can access Grifana's dashboard using the external IP address of the newly created **exposed-grifana** service
+* You can access Grafana's dashboard using the external IP address of the newly created **exposed-grifana** service
 
 
 ## Access Prometheus UI
@@ -48,6 +48,8 @@ default values: <br>
 <br>
 
 > serviceMonitor: <br>
+> &nbsp; &nbsp; interval: 90s <br>
+> &nbsp; &nbsp; scarpeTimeout 60s <br>
 > &nbsp; &nbsp; enabled: true <br>
 >  &nbsp; &nbsp; additionalLabels: <br>
 >   &nbsp; &nbsp; &nbsp; &nbsp; release: prometheus
