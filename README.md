@@ -1,71 +1,86 @@
-# mongodb-prometheus
-Expose MongoDB to Prometheus in Kubernetes cluster
+# MongoDB Monitoring with Prometheus and Grafana on Kubernetes
 
-## Setting Up Prometheus + Grafana 
+This guide demonstrates how to monitor a MongoDB deployment within a Kubernetes cluster using Prometheus and Grafana. It covers deploying Prometheus, Grafana, MongoDB, and the MongoDB exporter, along with configuring them to collect and visualize MongoDB metrics.
 
- `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts `<br> 
- `helm repo add stable https://charts.helm.sh/stable ` <br>
- `helm repo update `<br>
- `helm install prometheus prometheus-community/kube-prometheus-stack `<br>
+## Prerequisites
 
-## Access Grafana UI
-* Exposing **prometheus-grafana** deployment by a LoadBalancer service: <br>
-`kubectl expose deployment prometheus-grafana  --type=LoadBalancer --name=exposed-grifana`
+* A running Kubernetes cluster.
+* Helm installed.
+* `kubectl` configured to connect to your cluster.
 
-* Extracting the Login credentials: <br>
-``kubectl get secret prometheus-grafana -o yaml
-`` <br> <br>
-get the _admin-password_ and _admin-user_ values from the output above and decode them [here](https://www.base64decode.org/) <br> <br>
-default values: <br>
-  admin-user: admin <br>
-  admin-password: prom-operator
-  
-* You can access Grafana's dashboard using the external IP address of the newly created **exposed-grifana** service
+## 1. Deploy Prometheus and Grafana
 
+We'll use the `kube-prometheus-stack` Helm chart for easy deployment.
 
-## Access Prometheus UI
-* Exposing **prometheus-kube-prometheus-prometheus** ClusterIP service by a LoadBalancer service: <br>
-`kubectl expose service prometheus-kube-prometheus-prometheus  --type=LoadBalancer --name=exposed-prometheus`
-  
-* You can access Prometheus's dashboard using the external IP address of the newly created **exposed-prometheus** service
+```bash
+helm repo add prometheus-community [https://prometheus-community.github.io/helm-charts](https://prometheus-community.github.io/helm-charts)
+helm repo add stable [https://charts.helm.sh/stable](https://charts.helm.sh/stable)  # Consider migrating to prometheus-community charts if possible
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack
+Accessing Grafana
+Expose Grafana:
+Bash
 
+kubectl expose deployment prometheus-grafana --type=LoadBalancer --name=exposed-grafana
+Retrieve Credentials:
+Bash
 
-## Deploy MongoDB application (Deployment and Service component)
+kubectl get secret prometheus-grafana -o yaml | grep -E 'admin-user|admin-password'
+Decode the admin-user and admin-password values (they are base64 encoded). You can use a tool like base64 -d or an online decoder.
 
-* Apply the mongodb.yml file <br>
-`kubectl apply -f mongodb.yml`
+Default Credentials (may be outdated, check the secret):
+User: admin
+Password: prom-operator
+Access Grafana: Once the LoadBalancer has an external IP (check with kubectl get service exposed-grafana), you can access Grafana in your browser using that IP.
+Accessing Prometheus
+Expose Prometheus:
+Bash
 
+kubectl expose service prometheus-kube-prometheus-prometheus --type=LoadBalancer --name=exposed-prometheus
+Access Prometheus: Access the Prometheus UI via the external IP of the exposed-prometheus service.
+2. Deploy MongoDB
+Apply your MongoDB deployment and service configuration. Replace mongodb.yml with the actual file name if different.
 
-## MongoDB Exporter - exposing MongoDB metrics
+Bash
 
-* Export helm chart values to a yaml file and edit it <br>
-`helm show values prometheus-community/prometheus-mongodb-exporter > values.yml` <br>
-`vim values.yml`
+kubectl apply -f mongodb.yml
+3. Deploy the MongoDB Exporter
+The MongoDB exporter collects metrics from MongoDB and exposes them to Prometheus.
 
-* Edit the values as the following:
-> mongodb: <br>
-  >  &nbsp; &nbsp; uri: "mongodb://mongodb-service:27017"
-<br>
+Prepare values.yaml:
+Bash
 
-> serviceMonitor: <br>
-> &nbsp; &nbsp; interval: 90s <br>
-> &nbsp; &nbsp; scarpeTimeout 60s <br>
-> &nbsp; &nbsp; enabled: true <br>
->  &nbsp; &nbsp; additionalLabels: <br>
->   &nbsp; &nbsp; &nbsp; &nbsp; release: prometheus
+helm show values prometheus-community/prometheus-mongodb-exporter > values.yaml
+vim values.yaml
+Configure values.yaml: Modify the values.yaml file with your MongoDB connection details. Crucially, ensure the mongodb.uri points to your MongoDB service.
+YAML
 
-* Install it using the new values file: <br>
-`helm install mongodb-exporter prometheus-community/prometheus-mongodb-exporter -f values.yml`
+mongodb:
+  uri: "mongodb://mongodb-service:27017" # Replace with your MongoDB service name and port
 
-## Check the mongoDB metric exporter
-* Exposing **mongodb-exporter-prometheus-mongodb-exporter** ClusterIP service by a LoadBalancer service: <br> 
-`kubectl expose service mongodb-exporter-prometheus-mongodb-exporter  --type=LoadBalancer --name=exposed-mongodb-exporter` <br>
-* You can access it using the external IP address of the newly created **exposed-mongodb-exporter** service
+serviceMonitor:
+  interval: 90s
+  scrapeTimeout: 60s
+  enabled: true
+  additionalLabels:
+    release: prometheus
+Install the Exporter:
+Bash
 
+helm install mongodb-exporter prometheus-community/prometheus-mongodb-exporter -f values.yaml
+4. Verify the Exporter
+Expose the Exporter (Optional - For direct access): If you want to directly access the exporter's metrics endpoint, you can expose it. This is generally not required as Prometheus will scrape it automatically.
+Bash
 
+kubectl expose service mongodb-exporter-prometheus-mongodb-exporter --type=LoadBalancer --name=exposed-mongodb-exporter
+Check Metrics (Optional): Access the exposed service's external IP to see the metrics.
+5. Configure Prometheus to Scrape the Exporter (Usually Automatic)
+The serviceMonitor configuration in the values.yaml file should automatically configure Prometheus to discover and scrape the exporter. Verify this by checking the Prometheus targets page (accessible via the exposed Prometheus service). You should see the MongoDB exporter listed as a target.
 
+6. Import Grafana Dashboards (Recommended)
+Find and import pre-built Grafana dashboards for MongoDB monitoring. This will give you a head start in visualizing your MongoDB metrics. Search the Grafana dashboard library for "MongoDB" and import a relevant dashboard.
 
-
-
-
-
+Troubleshooting
+Exporter Not Scraping: Check Prometheus targets and logs for errors. Ensure the mongodb.uri in the values.yaml is correct and that the MongoDB service is accessible from the exporter pod.
+Connection Issues: Verify network connectivity between the exporter, Prometheus, and MongoDB. Check DNS resolution and network policies.
+Credentials: Double-check the MongoDB connection credentials.
